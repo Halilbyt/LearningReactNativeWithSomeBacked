@@ -38,3 +38,13 @@ export async function fetchExpenses() {
 
   return expenses;
 }
+
+// updating data from database
+export function updateExpense(id, expenseData) {
+  return axios.put(BACKEND_URL + `/expenses/${id}.json`, expenseData);
+}
+
+// deleting data from database
+export function deleteExpense(id) {
+  return axios.delete(BACKEND_URL + `/expenses/${id}.json`);
+}

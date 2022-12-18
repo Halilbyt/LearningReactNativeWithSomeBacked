@@ -1,16 +1,25 @@
-import { useLayoutEffect } from "react";
+import { useLayoutEffect, useState } from "react";
 import { View, StyleSheet, TextInput } from "react-native";
 import IconButton from "../components/UI/IconButton";
 import { useDispatch, useSelector } from "react-redux";
-import { addExpenses, removeExpenses, updateExpenses } from "../store/slicer";
-import DateHandler from "../util/date";
+import {
+  addExpenses,
+  removeExpenses,
+  setExpenses,
+  updateExpenses,
+} from "../store/slicer";
 import ExpenseForm from "../components/ManageExpense/ExpenseForm";
-import { storeExpense } from "../util/http";
+import { storeExpense, deleteExpense, updateExpense } from "../util/http";
+import LoadingOverlay from "../components/UI/LoadingOverlay";
+import ErrorOverlay from "../components/UI/ErrorOverlay";
 
 function ManageExpense({ route, navigation }) {
   const expensesDataBank = useSelector(
     (state) => state.allExpenses.expensesData
   );
+
+  const [isError, setIsError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const dispatch = useDispatch();
 
@@ -29,22 +38,48 @@ function ManageExpense({ route, navigation }) {
   }, [navigation, isEditing]);
 
   function deleteExpenseHandler() {
-    dispatch(removeExpenses({ id: checkedExpenseId }));
-    navigation.goBack();
+    setIsSubmitting(true);
+    try {
+      dispatch(removeExpenses({ id: checkedExpenseId }));
+      deleteExpense(checkedExpenseId);
+      navigation.goBack();
+    } catch (err) {
+      setIsError("Ops.. Somethink goes wrong please try again later");
+      setIsSubmitting(false);
+    }
   }
 
   function cancelHandler() {
     navigation.goBack();
   }
 
+  function errorHandler() {
+    setIsError(null);
+  }
+
+  if (isError && !isSubmitting) {
+    return <ErrorOverlay error={isError} onConfirm={errorHandler} />;
+  }
+
+  if (isSubmitting) {
+    return <LoadingOverlay />;
+  }
+
   async function confirmHandler(expenseData) {
-    if (isEditing) {
-      dispatch(updateExpenses({ ...expenseData, id: checkedExpenseId }));
-    } else {
-      const id = await storeExpense(expenseData); // we sending data to server and it function return us the id property
-      dispatch(addExpenses({ ...expenseData, id }));
+    setIsSubmitting(true);
+    try {
+      if (isEditing) {
+        dispatch(updateExpenses({ ...expenseData, id: checkedExpenseId }));
+        updateExpense(checkedExpenseId, expenseData);
+      } else {
+        const id = await storeExpense(expenseData); // we sending data to server and it function return us the id property
+        dispatch(addExpenses({ ...expenseData, id }));
+      }
+      navigation.goBack();
+    } catch (err) {
+      setIsError('"Ops.. Somethink goes wrong please try again later"');
+      setIsSubmitting(false);
     }
-    navigation.goBack();
   }
   return (
     <View style={styles.container}>
